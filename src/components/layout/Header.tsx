@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Menu, X, Crown, Phone, User, LogIn } from "lucide-react";
+import { Menu, X, Crown, Phone, User, LogIn, LogOut, Shield } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
+  const { user, isAdmin, signOut, loading } = useAuth();
 
   const navLinks = [
     { href: "/", label: "Home" },
@@ -15,6 +17,11 @@ const Header = () => {
   ];
 
   const isActive = (path: string) => location.pathname === path;
+
+  const handleLogout = async () => {
+    await signOut();
+    setIsMenuOpen(false);
+  };
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-md border-b border-border/50">
@@ -66,18 +73,41 @@ const Header = () => {
               <Phone className="w-4 h-4" />
               <span className="font-body">+91 98765 43210</span>
             </a>
-            <Link to="/login">
-              <Button variant="outline" size="sm">
-                <LogIn className="w-4 h-4" />
-                Login
-              </Button>
-            </Link>
-            <Link to="/dashboard">
-              <Button variant="gold" size="sm">
-                <User className="w-4 h-4" />
-                Dashboard
-              </Button>
-            </Link>
+            
+            {loading ? (
+              <div className="w-24 h-9 bg-secondary/50 rounded animate-pulse" />
+            ) : user ? (
+              <>
+                {/* Admin Button - Only visible for admins */}
+                {isAdmin && (
+                  <Link to="/admin">
+                    <Button variant="outline" size="sm" className="border-accent text-accent hover:bg-accent hover:text-accent-foreground">
+                      <Shield className="w-4 h-4" />
+                      Admin
+                    </Button>
+                  </Link>
+                )}
+                
+                {/* Dashboard Button - Visible for all logged in users */}
+                <Link to="/dashboard">
+                  <Button variant="gold" size="sm">
+                    <User className="w-4 h-4" />
+                    Dashboard
+                  </Button>
+                </Link>
+                
+                <Button variant="ghost" size="sm" onClick={handleLogout}>
+                  <LogOut className="w-4 h-4" />
+                </Button>
+              </>
+            ) : (
+              <Link to="/login">
+                <Button variant="gold" size="sm">
+                  <LogIn className="w-4 h-4" />
+                  Login
+                </Button>
+              </Link>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
@@ -110,18 +140,41 @@ const Header = () => {
                 </Link>
               ))}
               <div className="flex flex-col gap-3 pt-4 border-t border-border">
-                <Link to="/login" onClick={() => setIsMenuOpen(false)}>
-                  <Button variant="outline" className="w-full">
-                    <LogIn className="w-4 h-4" />
-                    Login
-                  </Button>
-                </Link>
-                <Link to="/dashboard" onClick={() => setIsMenuOpen(false)}>
-                  <Button variant="gold" className="w-full">
-                    <User className="w-4 h-4" />
-                    Dashboard
-                  </Button>
-                </Link>
+                {loading ? (
+                  <div className="w-full h-10 bg-secondary/50 rounded animate-pulse" />
+                ) : user ? (
+                  <>
+                    {/* Admin Button - Only visible for admins */}
+                    {isAdmin && (
+                      <Link to="/admin" onClick={() => setIsMenuOpen(false)}>
+                        <Button variant="outline" className="w-full border-accent text-accent hover:bg-accent hover:text-accent-foreground">
+                          <Shield className="w-4 h-4" />
+                          Admin Panel
+                        </Button>
+                      </Link>
+                    )}
+                    
+                    {/* Dashboard Button - Visible for all logged in users */}
+                    <Link to="/dashboard" onClick={() => setIsMenuOpen(false)}>
+                      <Button variant="gold" className="w-full">
+                        <User className="w-4 h-4" />
+                        Dashboard
+                      </Button>
+                    </Link>
+                    
+                    <Button variant="outline" className="w-full" onClick={handleLogout}>
+                      <LogOut className="w-4 h-4" />
+                      Logout
+                    </Button>
+                  </>
+                ) : (
+                  <Link to="/login" onClick={() => setIsMenuOpen(false)}>
+                    <Button variant="gold" className="w-full">
+                      <LogIn className="w-4 h-4" />
+                      Login
+                    </Button>
+                  </Link>
+                )}
               </div>
             </nav>
           </div>
