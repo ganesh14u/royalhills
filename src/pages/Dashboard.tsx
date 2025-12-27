@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -13,57 +13,107 @@ import {
   LogOut,
   Calendar,
   IndianRupee,
-  MessageCircle,
   CheckCircle,
   AlertCircle,
   Clock,
   Download,
   Phone,
+  AlertTriangle,
+  X,
 } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { useRentData } from "@/hooks/useRentData";
 
 const Dashboard = () => {
+  const navigate = useNavigate();
+  const { user, signOut, loading: authLoading } = useAuth();
+  const { allocation, payments, loading: rentLoading, rentStatus } = useRentData();
   const [activeTab, setActiveTab] = useState("overview");
+  const [showExpiryBanner, setShowExpiryBanner] = useState(true);
 
-  // Mock user data
-  const user = {
-    name: "Rahul Verma",
-    email: "rahul.verma@email.com",
-    phone: "+91 9876543210",
-    room: "Room 204",
-    roomType: "Double Sharing",
-    rentAmount: 8500,
-    rentStartDate: "2024-01-15",
-    rentExpiryDate: "2025-01-15",
-    currentMonthPaid: true,
-    nextDueDate: "2025-01-15",
+  useEffect(() => {
+    if (!authLoading && !user) {
+      navigate("/login");
+    }
+  }, [user, authLoading, navigate]);
+
+  const handleLogout = async () => {
+    await signOut();
+    navigate("/");
   };
 
-  const paymentHistory = [
-    { id: 1, month: "December 2024", amount: 8500, status: "paid", date: "2024-12-01" },
-    { id: 2, month: "November 2024", amount: 8500, status: "paid", date: "2024-11-01" },
-    { id: 3, month: "October 2024", amount: 8500, status: "paid", date: "2024-10-02" },
-    { id: 4, month: "September 2024", amount: 8500, status: "paid", date: "2024-09-01" },
-  ];
+  if (authLoading || rentLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-spin w-8 h-8 border-4 border-accent border-t-transparent rounded-full" />
+      </div>
+    );
+  }
 
-  const whatsappMessage = encodeURIComponent(
-    `Hi! I'm ${user.name} from ${user.room} at Royal Hills PG. I would like to discuss my rent payment.`
-  );
-  const whatsappLink = `https://wa.me/919876543210?text=${whatsappMessage}`;
+  if (!user) {
+    return null;
+  }
 
-  const getDaysUntilDue = () => {
-    const today = new Date();
-    const dueDate = new Date(user.nextDueDate);
-    const diffTime = dueDate.getTime() - today.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays;
+  const userName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'User';
+  const roomNumber = allocation?.room?.room_number || 'Not Assigned';
+  const roomType = allocation?.room?.room_type 
+    ? `${allocation.room.room_type.charAt(0).toUpperCase() + allocation.room.room_type.slice(1)} Sharing`
+    : 'N/A';
+  const rentAmount = allocation?.rent_amount || 0;
+  const rentStartDate = allocation?.rent_start_date;
+  const rentExpiryDate = allocation?.rent_expiry_date;
+  const paymentStatus = allocation?.payment_status || 'pending';
+
+  const getRentProgress = () => {
+    if (!rentStartDate || !rentExpiryDate) return 0;
+    const start = new Date(rentStartDate).getTime();
+    const end = new Date(rentExpiryDate).getTime();
+    const now = new Date().getTime();
+    const progress = ((now - start) / (end - start)) * 100;
+    return Math.min(Math.max(progress, 0), 100);
   };
-
-  const daysUntilDue = getDaysUntilDue();
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Rent Expiry Warning Banner */}
+      {(rentStatus.isExpiringSoon || rentStatus.isExpired) && showExpiryBanner && (
+        <div className={`fixed top-0 left-0 right-0 z-50 p-4 ${
+          rentStatus.isExpired ? 'bg-destructive' : 'bg-amber-500'
+        } text-white`}>
+          <div className="container mx-auto flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <AlertTriangle className="w-5 h-5" />
+              <span className="font-body font-medium">
+                {rentStatus.isExpired 
+                  ? `⚠️ Your rent has expired! Please pay immediately.`
+                  : `⚠️ Your rent will expire in ${rentStatus.daysUntilExpiry} day${rentStatus.daysUntilExpiry !== 1 ? 's' : ''}!`
+                }
+              </span>
+            </div>
+            <div className="flex items-center gap-3">
+              <Button 
+                variant="secondary" 
+                size="sm"
+                className="bg-white/20 hover:bg-white/30 text-white border-none"
+              >
+                <CreditCard className="w-4 h-4 mr-2" />
+                Pay Now
+              </Button>
+              <button 
+                onClick={() => setShowExpiryBanner(false)}
+                className="p-1 hover:bg-white/20 rounded"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Sidebar */}
-      <aside className="fixed left-0 top-0 bottom-0 w-64 bg-primary text-primary-foreground hidden lg:block">
+      <aside className={`fixed left-0 bottom-0 w-64 bg-primary text-primary-foreground hidden lg:block ${
+        (rentStatus.isExpiringSoon || rentStatus.isExpired) && showExpiryBanner ? 'top-14' : 'top-0'
+      }`}>
         <div className="p-6">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-3 mb-10">
@@ -103,20 +153,21 @@ const Dashboard = () => {
 
         {/* Logout */}
         <div className="absolute bottom-0 left-0 right-0 p-6">
-          <Link to="/">
-            <Button
-              variant="ghost"
-              className="w-full justify-start text-primary-foreground/70 hover:text-primary-foreground hover:bg-primary-foreground/10"
-            >
-              <LogOut className="w-5 h-5 mr-3" />
-              Logout
-            </Button>
-          </Link>
+          <Button
+            variant="ghost"
+            className="w-full justify-start text-primary-foreground/70 hover:text-primary-foreground hover:bg-primary-foreground/10"
+            onClick={handleLogout}
+          >
+            <LogOut className="w-5 h-5 mr-3" />
+            Logout
+          </Button>
         </div>
       </aside>
 
       {/* Main Content */}
-      <main className="lg:ml-64 min-h-screen">
+      <main className={`lg:ml-64 min-h-screen ${
+        (rentStatus.isExpiringSoon || rentStatus.isExpired) && showExpiryBanner ? 'pt-14' : ''
+      }`}>
         {/* Mobile Header */}
         <div className="lg:hidden bg-primary text-primary-foreground p-4 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2">
@@ -125,18 +176,21 @@ const Dashboard = () => {
             </div>
             <span className="font-display font-bold">Royal Hills</span>
           </Link>
-          <Link to="/">
-            <Button variant="ghost" size="icon" className="text-primary-foreground">
-              <LogOut className="w-5 h-5" />
-            </Button>
-          </Link>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="text-primary-foreground"
+            onClick={handleLogout}
+          >
+            <LogOut className="w-5 h-5" />
+          </Button>
         </div>
 
         <div className="p-6 lg:p-10">
           {/* Welcome Header */}
           <div className="mb-8">
             <h1 className="font-display text-2xl lg:text-3xl font-bold text-foreground mb-2">
-              Welcome back, {user.name.split(" ")[0]}!
+              Welcome back, {userName.split(" ")[0]}!
             </h1>
             <p className="text-muted-foreground font-body">
               Here's an overview of your stay at Royal Hills PG.
@@ -153,9 +207,9 @@ const Dashboard = () => {
                       Your Room
                     </p>
                     <h3 className="font-display text-xl font-bold text-foreground">
-                      {user.room}
+                      {roomNumber}
                     </h3>
-                    <p className="text-accent text-sm font-body">{user.roomType}</p>
+                    <p className="text-accent text-sm font-body">{roomType}</p>
                   </div>
                   <div className="w-12 h-12 rounded-lg bg-accent/10 flex items-center justify-center">
                     <Home className="w-6 h-6 text-accent" />
@@ -173,7 +227,7 @@ const Dashboard = () => {
                     </p>
                     <h3 className="font-display text-xl font-bold text-foreground flex items-center">
                       <IndianRupee className="w-5 h-5" />
-                      {user.rentAmount.toLocaleString()}
+                      {rentAmount.toLocaleString()}
                     </h3>
                     <p className="text-muted-foreground text-sm font-body">
                       Per month
@@ -194,7 +248,7 @@ const Dashboard = () => {
                       Payment Status
                     </p>
                     <div className="flex items-center gap-2">
-                      {user.currentMonthPaid ? (
+                      {paymentStatus === 'paid' ? (
                         <>
                           <CheckCircle className="w-5 h-5 text-green-500" />
                           <Badge className="bg-green-500/10 text-green-600 border-green-200">
@@ -212,8 +266,14 @@ const Dashboard = () => {
                       Current month
                     </p>
                   </div>
-                  <div className="w-12 h-12 rounded-lg bg-green-500/10 flex items-center justify-center">
-                    <CheckCircle className="w-6 h-6 text-green-500" />
+                  <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
+                    paymentStatus === 'paid' ? 'bg-green-500/10' : 'bg-destructive/10'
+                  }`}>
+                    {paymentStatus === 'paid' ? (
+                      <CheckCircle className="w-6 h-6 text-green-500" />
+                    ) : (
+                      <AlertCircle className="w-6 h-6 text-destructive" />
+                    )}
                   </div>
                 </div>
               </CardContent>
@@ -224,22 +284,32 @@ const Dashboard = () => {
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="text-muted-foreground text-sm font-body mb-1">
-                      Next Due Date
+                      Rent Expiry
                     </p>
                     <h3 className="font-display text-xl font-bold text-foreground">
-                      {new Date(user.nextDueDate).toLocaleDateString("en-IN", {
-                        day: "numeric",
-                        month: "short",
-                      })}
+                      {rentExpiryDate 
+                        ? new Date(rentExpiryDate).toLocaleDateString("en-IN", {
+                            day: "numeric",
+                            month: "short",
+                          })
+                        : 'N/A'
+                      }
                     </h3>
                     <p
                       className={`text-sm font-body ${
-                        daysUntilDue <= 3
-                          ? "text-destructive"
+                        rentStatus.isExpired
+                          ? "text-destructive font-semibold"
+                          : rentStatus.isExpiringSoon
+                          ? "text-amber-500 font-semibold"
                           : "text-muted-foreground"
                       }`}
                     >
-                      {daysUntilDue} days remaining
+                      {rentStatus.isExpired 
+                        ? 'Expired!'
+                        : rentStatus.daysUntilExpiry > 0 
+                        ? `${rentStatus.daysUntilExpiry} days remaining`
+                        : 'N/A'
+                      }
                     </p>
                   </div>
                   <div className="w-12 h-12 rounded-lg bg-accent/10 flex items-center justify-center">
@@ -265,17 +335,6 @@ const Dashboard = () => {
                     <CreditCard className="w-5 h-5 mr-3" />
                     Pay Rent Now
                   </Button>
-                  <a
-                    href={whatsappLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block"
-                  >
-                    <Button variant="whatsapp" className="w-full justify-start">
-                      <MessageCircle className="w-5 h-5 mr-3" />
-                      WhatsApp Reminder
-                    </Button>
-                  </a>
                   <a href="tel:+919876543210" className="block">
                     <Button variant="outline" className="w-full justify-start">
                       <Phone className="w-5 h-5 mr-3" />
@@ -298,33 +357,46 @@ const Dashboard = () => {
                       Start Date
                     </span>
                     <span className="font-body font-medium">
-                      {new Date(user.rentStartDate).toLocaleDateString("en-IN", {
-                        day: "numeric",
-                        month: "short",
-                        year: "numeric",
-                      })}
+                      {rentStartDate 
+                        ? new Date(rentStartDate).toLocaleDateString("en-IN", {
+                            day: "numeric",
+                            month: "short",
+                            year: "numeric",
+                          })
+                        : 'N/A'
+                      }
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-muted-foreground text-sm font-body">
                       Expiry Date
                     </span>
-                    <span className="font-body font-medium">
-                      {new Date(user.rentExpiryDate).toLocaleDateString("en-IN", {
-                        day: "numeric",
-                        month: "short",
-                        year: "numeric",
-                      })}
+                    <span className={`font-body font-medium ${
+                      rentStatus.isExpired ? 'text-destructive' : 
+                      rentStatus.isExpiringSoon ? 'text-amber-500' : ''
+                    }`}>
+                      {rentExpiryDate 
+                        ? new Date(rentExpiryDate).toLocaleDateString("en-IN", {
+                            day: "numeric",
+                            month: "short",
+                            year: "numeric",
+                          })
+                        : 'N/A'
+                      }
                     </span>
                   </div>
                   <div className="h-2 bg-secondary rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-gradient-gold rounded-full"
-                      style={{ width: "85%" }}
+                      className={`h-full rounded-full ${
+                        rentStatus.isExpired ? 'bg-destructive' :
+                        rentStatus.isExpiringSoon ? 'bg-amber-500' :
+                        'bg-gradient-gold'
+                      }`}
+                      style={{ width: `${getRentProgress()}%` }}
                     />
                   </div>
                   <p className="text-muted-foreground text-xs font-body text-center">
-                    85% of your rent period completed
+                    {Math.round(getRentProgress())}% of your rent period completed
                   </p>
                 </CardContent>
               </Card>
@@ -341,46 +413,65 @@ const Dashboard = () => {
                 </Button>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {paymentHistory.map((payment) => (
-                    <div
-                      key={payment.id}
-                      className="flex items-center justify-between p-4 rounded-lg bg-secondary/30 hover:bg-secondary/50 transition-colors"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-lg bg-green-500/10 flex items-center justify-center">
-                          <CheckCircle className="w-5 h-5 text-green-500" />
+                {payments.length > 0 ? (
+                  <div className="space-y-4">
+                    {payments.map((payment) => (
+                      <div
+                        key={payment.id}
+                        className="flex items-center justify-between p-4 rounded-lg bg-secondary/30 hover:bg-secondary/50 transition-colors"
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                            payment.status === 'success' ? 'bg-green-500/10' : 'bg-destructive/10'
+                          }`}>
+                            {payment.status === 'success' ? (
+                              <CheckCircle className="w-5 h-5 text-green-500" />
+                            ) : (
+                              <AlertCircle className="w-5 h-5 text-destructive" />
+                            )}
+                          </div>
+                          <div>
+                            <h4 className="font-body font-medium text-foreground">
+                              {new Date(payment.payment_date).toLocaleDateString("en-IN", {
+                                month: "long",
+                                year: "numeric",
+                              })}
+                            </h4>
+                            <p className="text-muted-foreground text-sm font-body flex items-center gap-1">
+                              <Clock className="w-3 h-3" />
+                              {new Date(payment.payment_date).toLocaleDateString("en-IN")}
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <h4 className="font-body font-medium text-foreground">
-                            {payment.month}
-                          </h4>
-                          <p className="text-muted-foreground text-sm font-body flex items-center gap-1">
-                            <Clock className="w-3 h-3" />
-                            {new Date(payment.date).toLocaleDateString("en-IN")}
-                          </p>
+                        <div className="flex items-center gap-4">
+                          <div className="text-right">
+                            <p className="font-body font-semibold text-foreground flex items-center">
+                              <IndianRupee className="w-4 h-4" />
+                              {payment.amount.toLocaleString()}
+                            </p>
+                            <Badge
+                              variant="secondary"
+                              className={payment.status === 'success' 
+                                ? "bg-green-500/10 text-green-600"
+                                : "bg-destructive/10 text-destructive"
+                              }
+                            >
+                              {payment.status}
+                            </Badge>
+                          </div>
+                          <Button variant="ghost" size="icon">
+                            <Download className="w-4 h-4" />
+                          </Button>
                         </div>
                       </div>
-                      <div className="flex items-center gap-4">
-                        <div className="text-right">
-                          <p className="font-body font-semibold text-foreground flex items-center">
-                            <IndianRupee className="w-4 h-4" />
-                            {payment.amount.toLocaleString()}
-                          </p>
-                          <Badge
-                            variant="secondary"
-                            className="bg-green-500/10 text-green-600"
-                          >
-                            {payment.status}
-                          </Badge>
-                        </div>
-                        <Button variant="ghost" size="icon">
-                          <Download className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <CreditCard className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                    <p className="font-body">No payment history yet</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>

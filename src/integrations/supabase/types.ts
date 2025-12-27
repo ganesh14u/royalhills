@@ -14,16 +14,229 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      admin_settings: {
+        Row: {
+          bank_account_name: string | null
+          bank_account_number: string | null
+          bank_ifsc: string | null
+          double_room_rent: number | null
+          id: string
+          payments_enabled: boolean | null
+          razorpay_key_id: string | null
+          razorpay_key_secret: string | null
+          single_room_rent: number | null
+          triple_room_rent: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          bank_account_name?: string | null
+          bank_account_number?: string | null
+          bank_ifsc?: string | null
+          double_room_rent?: number | null
+          id?: string
+          payments_enabled?: boolean | null
+          razorpay_key_id?: string | null
+          razorpay_key_secret?: string | null
+          single_room_rent?: number | null
+          triple_room_rent?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          bank_account_name?: string | null
+          bank_account_number?: string | null
+          bank_ifsc?: string | null
+          double_room_rent?: number | null
+          id?: string
+          payments_enabled?: boolean | null
+          razorpay_key_id?: string | null
+          razorpay_key_secret?: string | null
+          single_room_rent?: number | null
+          triple_room_rent?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      payments: {
+        Row: {
+          allocation_id: string | null
+          amount: number
+          created_at: string | null
+          id: string
+          payment_date: string | null
+          payment_method: string | null
+          status: string | null
+          transaction_id: string | null
+          user_id: string
+        }
+        Insert: {
+          allocation_id?: string | null
+          amount: number
+          created_at?: string | null
+          id?: string
+          payment_date?: string | null
+          payment_method?: string | null
+          status?: string | null
+          transaction_id?: string | null
+          user_id: string
+        }
+        Update: {
+          allocation_id?: string | null
+          amount?: number
+          created_at?: string | null
+          id?: string
+          payment_date?: string | null
+          payment_method?: string | null
+          status?: string | null
+          transaction_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_allocation_id_fkey"
+            columns: ["allocation_id"]
+            isOneToOne: false
+            referencedRelation: "rent_allocations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string | null
+          email: string
+          full_name: string | null
+          id: string
+          mobile: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          full_name?: string | null
+          id: string
+          mobile?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          full_name?: string | null
+          id?: string
+          mobile?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      rent_allocations: {
+        Row: {
+          created_at: string | null
+          id: string
+          payment_status: string | null
+          rent_amount: number
+          rent_expiry_date: string
+          rent_start_date: string
+          room_id: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          payment_status?: string | null
+          rent_amount: number
+          rent_expiry_date: string
+          rent_start_date: string
+          room_id?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          payment_status?: string | null
+          rent_amount?: number
+          rent_expiry_date?: string
+          rent_start_date?: string
+          room_id?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rent_allocations_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rooms: {
+        Row: {
+          amenities: string[] | null
+          capacity: number
+          created_at: string | null
+          id: string
+          is_available: boolean | null
+          monthly_rent: number
+          room_number: string
+          room_type: string
+        }
+        Insert: {
+          amenities?: string[] | null
+          capacity?: number
+          created_at?: string | null
+          id?: string
+          is_available?: boolean | null
+          monthly_rent: number
+          room_number: string
+          room_type: string
+        }
+        Update: {
+          amenities?: string[] | null
+          capacity?: number
+          created_at?: string | null
+          id?: string
+          is_available?: boolean | null
+          monthly_rent?: number
+          room_number?: string
+          room_type?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +363,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "user"],
+    },
   },
 } as const
