@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "./useAuthHook";
-import { api } from "src/integrations/mongodb/apiClient"; // ✅ USE THIS
 
 interface RentAllocation {
   id: string;
@@ -44,36 +43,30 @@ export const useRentData = () => {
 
   const fetchRentData = useCallback(async () => {
     if (!user) return;
-
     try {
-      const res = await api.get(
-        `/admin/tenants/allocation/${user.id}`
-      );
-
-      const data = res.data?.allocation;
-
-      if (!data) {
+      const res = await fetch(`http://localhost:4000/api/rent/allocation/${user.id}`);
+      const data = await res.json();
+      if (!data?.allocation) {
         setAllocation(null);
         return;
       }
-
+      const alloc = data.allocation;
       setAllocation({
-        id: data._id || data.id,
-        rent_amount: data.rent_amount ?? 0,
-        rent_start_date: data.rent_start_date ?? "",
-        rent_expiry_date: data.rent_expiry_date ?? "",
-        payment_status: data.payment_status ?? "pending",
-        room: data.room
+        id: alloc._id ?? alloc.id,
+        rent_amount: alloc.rent_amount ?? 0,
+        rent_start_date: alloc.rent_start_date ?? "",
+        rent_expiry_date: alloc.rent_expiry_date ?? "",
+        payment_status: alloc.payment_status ?? "pending",
+        room: alloc.room
           ? {
-              room_number: data.room.room_number ?? "N/A",
-              room_type: data.room.room_type ?? "N/A",
-              amenities: data.room.amenities ?? [],
+              room_number: alloc.room.room_number ?? "N/A",
+              room_type: alloc.room.room_type ?? "N/A",
+              amenities: alloc.room.amenities ?? [],
             }
           : undefined,
       });
-
-      if (data.rent_expiry_date) {
-        calculateRentStatus(data.rent_expiry_date, data.payment_status);
+      if (alloc.rent_expiry_date) {
+        calculateRentStatus(alloc.rent_expiry_date, alloc.payment_status);
       }
     } catch (err) {
       console.error("Error fetching rent data", err);
@@ -84,12 +77,10 @@ export const useRentData = () => {
 
   const fetchPayments = useCallback(async () => {
     if (!user) return;
-
     try {
-      const res = await api.get(
-        `/admin/payments/${user.id}`
-      );
-      setPayments(res.data ?? []);
+      const res = await fetch(`http://localhost:4000/api/rent/payments/${user.id}`);
+      const data = await res.json();
+      setPayments(data ?? []);
     } catch (err) {
       console.error("Error fetching payments", err);
     }
@@ -107,8 +98,7 @@ export const useRentData = () => {
   const calculateRentStatus = (expiryDateStr: string, paymentStatus: string) => {
     const today = new Date();
     const expiryDate = new Date(expiryDateStr);
-    const diffTime = expiryDate.getTime() - today.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const diffDays = Math.ceil((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 
     setRentStatus({
       isActive: diffDays > 0 && paymentStatus === "paid",
@@ -118,14 +108,5 @@ export const useRentData = () => {
     });
   };
 
-  return {
-    allocation,
-    payments,
-    loading,
-    rentStatus,
-    refetch: () => {
-      fetchRentData();
-      fetchPayments();
-    },
-  };
+  return { allocation, payments, loading, rentStatus, refetch: () => { fetchRentData(); fetchPayments(); } };
 };
