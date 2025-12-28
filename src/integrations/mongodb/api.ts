@@ -4,7 +4,7 @@ import axios from "axios";
    Axios Instance
 ============================ */
 const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL, // your backend URL
+  baseURL: import.meta.env.VITE_API_URL || "http://localhost:4000", // your backend URL
   withCredentials: true,
   headers: {
     "Content-Type": "application/json",
@@ -85,49 +85,49 @@ export interface AdminSettings {
 export const api = {
   /* -------- TENANTS -------- */
   async getTenants(): Promise<Tenant[]> {
-    const res = await apiClient.get("/admin/tenants");
+    const res = await apiClient.get("/api/admin/tenants");
     return res.data;
   },
 
   async updateTenant(tenantId: string, updates: TenantUpdatePayload): Promise<Tenant> {
-    const res = await apiClient.put(`/admin/tenants/${tenantId}`, updates);
+    const res = await apiClient.put(`/api/admin/tenants/${tenantId}`, updates);
     return res.data;
   },
 
   /* -------- ROOMS -------- */
   async getRooms(): Promise<Room[]> {
-    const res = await apiClient.get("/rooms");
+    const res = await apiClient.get("/api/rooms");
     return res.data;
   },
 
   async addRoom(roomData: Omit<Room, "id">): Promise<Room> {
-    const res = await apiClient.post("/rooms", roomData);
+    const res = await apiClient.post("/api/rooms", roomData);
     return res.data;
   },
 
   async updateRoom(roomId: string, updates: Partial<Room>): Promise<Room> {
-    const res = await apiClient.put(`/rooms/${roomId}`, updates);
+    const res = await apiClient.put(`/api/rooms/${roomId}`, updates);
     return res.data;
   },
 
   async deleteRoom(roomId: string): Promise<void> {
-    await apiClient.delete(`/rooms/${roomId}`);
+    await apiClient.delete(`/api/rooms/${roomId}`);
   },
 
   /* -------- PAYMENTS -------- */
   async getPayments(): Promise<Payment[]> {
-    const res = await apiClient.get("/admin/payments");
+    const res = await apiClient.get("/api/admin/payments");
     return res.data;
   },
 
   /* -------- SETTINGS -------- */
   async getSettings(): Promise<AdminSettings> {
-    const res = await apiClient.get("/admin/settings");
+    const res = await apiClient.get("/api/admin/settings");
     return res.data;
   },
 
   async updateSettings(newSettings: Partial<AdminSettings>): Promise<AdminSettings> {
-    const res = await apiClient.put("/admin/settings", newSettings);
+    const res = await apiClient.put("/api/admin/settings", newSettings);
     return res.data;
   },
 };

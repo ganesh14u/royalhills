@@ -19,7 +19,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const fetchMe = async () => {
       try {
-        const res = await api.get("/auth/me");
+        const res = await api.get("/api/auth/me");
         setUser(res.data.user);
         setUserRole(res.data.user.role);
       } catch (err: unknown) {
@@ -39,8 +39,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   ================================ */
   const signIn = async (email: string, password: string) => {
     try {
-      await api.post("/auth/login", { email, password });
-      const res = await api.get("/auth/me");
+      await api.post("/api/auth/login", { email, password });
+      const res = await api.get("/api/auth/me");
 
       setUser(res.data.user);
       setUserRole(res.data.user.role);
@@ -58,7 +58,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   ================================ */
   const signUp = async (email: string, password: string, fullName: string, mobile: string) => {
     try {
-      await api.post("/auth/register", { email, password, fullName, mobile });
+      await api.post("/api/auth/register", { email, password, fullName, mobile });
       return { error: null };
     } catch (err: unknown) {
       let message = "Registration failed";
@@ -72,7 +72,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   ================================ */
   const signOut = async () => {
     try {
-      await api.post("/auth/logout");
+      await api.post("/api/auth/logout");
     } catch (err: unknown) {
       console.error("Logout failed:", err);
     } finally {
