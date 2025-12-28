@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "./useAuthHook";
-import axios from "axios";
+import { api } from "src/integrations/mongodb/apiClient"; // ✅ USE THIS
 
 interface RentAllocation {
   id: string;
@@ -46,9 +46,8 @@ export const useRentData = () => {
     if (!user) return;
 
     try {
-      const res = await axios.get(
-        `http://localhost:4000/api/admin/tenants/allocation/${user.id}`,
-        { withCredentials: true }
+      const res = await api.get(
+        `/admin/tenants/allocation/${user.id}`
       );
 
       const data = res.data?.allocation;
@@ -87,9 +86,8 @@ export const useRentData = () => {
     if (!user) return;
 
     try {
-      const res = await axios.get(
-        `http://localhost:4000/api/admin/payments/${user.id}`,
-        { withCredentials: true }
+      const res = await api.get(
+        `/admin/payments/${user.id}`
       );
       setPayments(res.data ?? []);
     } catch (err) {

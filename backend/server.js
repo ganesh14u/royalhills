@@ -16,10 +16,25 @@ const app = express();
 // =========================
 // CORS CONFIG
 // =========================
+const allowedOrigins = [
+  "http://localhost:5137",
+  "https://royalhills.netlify.app"
+];
+
 app.use(cors({
-  origin: "http://localhost:5137" || "https://royalhills.netlify.app", // your frontend URL
-  credentials: true,               // allow cookies
+  origin: function (origin, callback) {
+    // Allow server-to-server, Postman, mobile apps
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("CORS not allowed for this origin"));
+    }
+  },
+  credentials: true
 }));
+
 
 // Middleware
 app.use(express.json());
