@@ -1,0 +1,5 @@
+[[redirects]]
+  from = "/api/*"
+  to = "https://royalhills-3q0i.onrender.com/api/:splat"
+  status = 200
+  force = true
