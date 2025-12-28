@@ -21,7 +21,7 @@ import {
   AlertTriangle,
   X,
 } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/hooks/useAuthHook";
 import { useRentData } from "@/hooks/useRentData";
 
 const Dashboard = () => {
@@ -54,7 +54,7 @@ const Dashboard = () => {
     return null;
   }
 
-  const userName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'User';
+  const userName = user.fullName || user.email?.split('@')[0] || 'User';
   const roomNumber = allocation?.room?.room_number || 'Not Assigned';
   const roomType = allocation?.room?.room_type 
     ? `${allocation.room.room_type.charAt(0).toUpperCase() + allocation.room.room_type.slice(1)} Sharing`

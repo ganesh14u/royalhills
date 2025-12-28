@@ -82,10 +82,10 @@ const AmenitiesSection = () => {
       <div className="container mx-auto px-4">
         {/* Section Header */}
         <div className="text-center max-w-2xl mx-auto mb-16">
-          <span className="text-accent font-semibold text-sm tracking-wider uppercase font-body">
+          <span className="text-accent font-semibold text-4xl tracking-wider uppercase font-body">
             What We Offer
           </span>
-          <h2 className="font-display text-3xl md:text-4xl font-bold text-foreground mt-3 mb-4">
+          <h2 className="font-display text-3xl md:text-3xl font-bold text-foreground mt-3 mb-4">
             Premium Amenities
           </h2>
           <p className="text-muted-foreground font-body">
