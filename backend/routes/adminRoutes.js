@@ -1,8 +1,57 @@
 import express from "express";
+import mongoose from "mongoose";
+import Allocation from "../models/Allocation.js";
+import Room from "../models/Room.js";
 
 const router = express.Router();
 
-// GET payments
+// GET user allocation
+router.get("/tenants/allocation/:userId", async (req, res) => {
+  try {
+    const userId = req.params.userId;
+    const allocation = await Allocation.findOne({ user_id: new mongoose.Types.ObjectId(userId) }).sort({ created_at: -1 });
+    if (!allocation) {
+      return res.json(null);
+    }
+    const room = await Room.findById(allocation.room_id);
+    res.json({
+      id: allocation._id,
+      rent_amount: allocation.rent_amount,
+      rent_start_date: allocation.rent_start_date,
+      rent_expiry_date: allocation.rent_expiry_date,
+      payment_status: allocation.payment_status,
+      room: room ? {
+        room_number: room.room_number,
+        room_type: room.room_type,
+        amenities: room.amenities,
+      } : null,
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// GET user payments
+router.get("/payments/:userId", async (req, res) => {
+  try {
+    const userId = req.params.userId;
+    // Dummy payments for now
+    const payments = [
+      {
+        id: "1",
+        amount: 5000,
+        payment_date: "2023-12-01",
+        payment_method: "online",
+        status: "success",
+      },
+    ];
+    res.json(payments);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// GET all payments (admin)
 router.get("/payments", async (req, res) => {
   // Dummy data for now
   const payments = [

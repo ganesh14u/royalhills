@@ -44,17 +44,38 @@ export const useRentData = () => {
 
   const fetchRentData = useCallback(async () => {
     if (!user) return;
+
     try {
       const res = await axios.get(
-        `http://localhost:4000/api/rent/allocation/${user.id}`,
+        `http://localhost:4000/api/admin/tenants/allocation/${user.id}`,
         { withCredentials: true }
       );
 
-      setAllocation(res.data);
-      calculateRentStatus(
-        res.data.rent_expiry_date,
-        res.data.payment_status
-      );
+      const data = res.data?.allocation;
+
+      if (!data) {
+        setAllocation(null);
+        return;
+      }
+
+      setAllocation({
+        id: data._id || data.id,
+        rent_amount: data.rent_amount ?? 0,
+        rent_start_date: data.rent_start_date ?? "",
+        rent_expiry_date: data.rent_expiry_date ?? "",
+        payment_status: data.payment_status ?? "pending",
+        room: data.room
+          ? {
+              room_number: data.room.room_number ?? "N/A",
+              room_type: data.room.room_type ?? "N/A",
+              amenities: data.room.amenities ?? [],
+            }
+          : undefined,
+      });
+
+      if (data.rent_expiry_date) {
+        calculateRentStatus(data.rent_expiry_date, data.payment_status);
+      }
     } catch (err) {
       console.error("Error fetching rent data", err);
     } finally {
@@ -64,12 +85,13 @@ export const useRentData = () => {
 
   const fetchPayments = useCallback(async () => {
     if (!user) return;
+
     try {
       const res = await axios.get(
-        `http://localhost:4000/api/payments/${user.id}`,
+        `http://localhost:4000/api/admin/payments/${user.id}`,
         { withCredentials: true }
       );
-      setPayments(res.data);
+      setPayments(res.data ?? []);
     } catch (err) {
       console.error("Error fetching payments", err);
     }
@@ -84,10 +106,7 @@ export const useRentData = () => {
     }
   }, [user, fetchRentData, fetchPayments]);
 
-  const calculateRentStatus = (
-    expiryDateStr: string,
-    paymentStatus: string
-  ) => {
+  const calculateRentStatus = (expiryDateStr: string, paymentStatus: string) => {
     const today = new Date();
     const expiryDate = new Date(expiryDateStr);
     const diffTime = expiryDate.getTime() - today.getTime();
