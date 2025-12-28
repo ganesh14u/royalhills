@@ -159,4 +159,45 @@ router.put("/:id", async (req, res) => {
   }
 });
 
+/**
+ * GET allocation for a specific user (for user dashboard)
+ */
+router.get("/allocation/:userId", async (req, res) => {
+  try {
+    const userId = req.params.userId;
+
+    if (!userId || userId.length !== 24) {
+      return res.status(400).json({ message: "Invalid user ID" });
+    }
+
+    const allocation = await Allocation.findOne({ user_id: userId });
+
+    if (!allocation) {
+      return res.json({ allocation: null });
+    }
+
+    const room = await Room.findById(allocation.room_id);
+
+    res.json({
+      allocation: {
+        id: allocation._id,
+        rent_amount: allocation.rent_amount,
+        rent_start_date: allocation.rent_start_date,
+        rent_expiry_date: allocation.rent_expiry_date,
+        payment_status: allocation.payment_status,
+        room: room
+          ? {
+              room_number: room.room_number,
+              room_type: room.room_type,
+              amenities: room.amenities || [],
+            }
+          : null,
+      },
+    });
+  } catch (err) {
+    console.error("Error fetching allocation:", err);
+    res.status(500).json({ message: err.message });
+  }
+});
+
 export default router;
