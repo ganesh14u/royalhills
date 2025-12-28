@@ -4,7 +4,7 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
 
-import authRoutes from "./routes/authRoutes.js"; // your auth routes
+import authRoutes from "./routes/authRoutes.js";
 import roomRoutes from "./routes/roomRoutes.js";
 import tenantRoutes from "./routes/tenantRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
@@ -22,19 +22,13 @@ const allowedOrigins = [
 ];
 
 app.use(cors({
-  origin: function (origin, callback) {
-    // Allow server-to-server, Postman, mobile apps
+  origin: (origin, callback) => {
     if (!origin) return callback(null, true);
-
-    if (allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error("CORS not allowed for this origin"));
-    }
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    return callback(null, false);
   },
   credentials: true
 }));
-
 
 // Middleware
 app.use(express.json());
@@ -54,8 +48,10 @@ mongoose
   .connect(process.env.MONGO_URI)
   .then(() => {
     console.log("✅ MongoDB Connected");
-    app.listen(process.env.PORT, () =>
-      console.log(`🚀 Server running on port ${process.env.PORT}`)
+
+    const PORT = process.env.PORT || 4000;
+    app.listen(PORT, () =>
+      console.log(`🚀 Server running on port ${PORT}`)
     );
   })
   .catch((err) => console.error("❌ MongoDB connection error:", err));
