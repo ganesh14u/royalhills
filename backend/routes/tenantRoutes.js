@@ -6,196 +6,203 @@ import Room from "../models/Room.js";
 const router = express.Router();
 
 /**
- * GET all tenants with their latest allocation
+ * ================================
+ * GET all tenants with allocation
+ * ================================
  */
 router.get("/", async (req, res) => {
   try {
     const users = await User.find();
+
     const tenants = await Promise.all(
       users.map(async (user) => {
-        const allocation = await Allocation.findOne({ user_id: user._id }).sort({ created_at: -1 });
-        let allocationData = null;
-
-        if (allocation) {
-          const room = await Room.findById(allocation.room_id);
-          allocationData = {
-            room_id: allocation.room_id,
-            room_number: room ? room.room_number : "N/A",
-            room_type: room ? room.room_type : "N/A",
-            rent_amount: allocation.rent_amount,
-            rent_start_date: allocation.rent_start_date,
-            rent_expiry_date: allocation.rent_expiry_date,
-            payment_status: allocation.payment_status,
-          };
-        }
+        const allocation = await Allocation.findOne({ user_id: user._id })
+          .populate("room_id")
+          .sort({ createdAt: -1 });
 
         return {
           id: user._id,
           email: user.email,
           full_name: user.fullName,
           mobile: user.mobile,
-          allocation: allocationData,
+          allocation: allocation
+            ? {
+                room_id: allocation.room_id?._id || null,
+                room_number: allocation.room_id?.room_number || "N/A",
+                room_type: allocation.room_id?.room_type || "N/A",
+                rent_amount: allocation.rent_amount,
+                rent_start_date: allocation.rent_start_date,
+                rent_expiry_date: allocation.rent_expiry_date,
+                payment_status: allocation.payment_status,
+              }
+            : null,
         };
       })
     );
 
     res.json(tenants);
   } catch (err) {
-    console.error(err);
+    console.error("GET TENANTS ERROR:", err);
     res.status(500).json({ message: err.message });
   }
 });
 
 /**
- * UPDATE tenant profile and allocation
+ * =====================================
+ * UPDATE tenant profile & allocation
+ * =====================================
  */
 router.put("/:id", async (req, res) => {
   try {
-    const { profileUpdates, allocationUpdates } = req.body;
     const tenantId = req.params.id;
+    const { profileUpdates, allocationUpdates } = req.body;
 
-    // Validate tenant ID
     if (!tenantId || tenantId.length !== 24) {
       return res.status(400).json({ message: "Invalid tenant ID" });
     }
 
-    // Check if user exists
-    const existingUser = await User.findById(tenantId);
-    if (!existingUser) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    console.log("Updating tenant:", tenantId);
-    console.log("Profile updates:", profileUpdates);
-    console.log("Allocation updates:", allocationUpdates);
-
-    // Update user profile
+    // ---- Update user profile ----
     if (profileUpdates) {
-      const updateData = {};
-      if (profileUpdates.full_name !== undefined) updateData.fullName = profileUpdates.full_name;
-      if (profileUpdates.mobile !== undefined) updateData.mobile = profileUpdates.mobile;
-      console.log("Updating user profile:", updateData);
-      await User.findByIdAndUpdate(tenantId, updateData);
+      await User.findByIdAndUpdate(tenantId, {
+        fullName: profileUpdates.full_name,
+        mobile: profileUpdates.mobile,
+      });
     }
 
-    // Update allocation
-    if (allocationUpdates) {
-      const existingAllocation = await Allocation.findOne({ user_id: tenantId });
-      console.log("Existing allocation:", existingAllocation);
+    if (!allocationUpdates) {
+      return res.json({ success: true });
+    }
 
-      // If a new room is assigned
-      if (allocationUpdates.room_id) {
-        try {
-          // Validate room exists
-          const newRoom = await Room.findById(allocationUpdates.room_id);
-          if (!newRoom) {
-            throw new Error(`Room with ID ${allocationUpdates.room_id} not found`);
-          }
+    const existingAllocation = await Allocation.findOne({ user_id: tenantId });
 
-          // Make previous room available
-          if (existingAllocation && existingAllocation.room_id.toString() !== allocationUpdates.room_id.toString()) {
-            const oldRoom = await Room.findById(existingAllocation.room_id);
-            if (oldRoom) {
-              await Room.findByIdAndUpdate(existingAllocation.room_id, { is_available: true });
-            }
-          }
-
-          // Make new room unavailable
-          await Room.findByIdAndUpdate(allocationUpdates.room_id, { is_available: false });
-
-          // Calculate default expiry date (1 month from now)
-          const defaultExpiryDate = new Date();
-          defaultExpiryDate.setMonth(defaultExpiryDate.getMonth() + 1);
-          const expiryDate = allocationUpdates.rent_expiry_date || defaultExpiryDate.toISOString().split("T")[0];
-
-          const allocationData = {
-            user_id: tenantId,
-            room_id: allocationUpdates.room_id,
-            rent_amount: allocationUpdates.rent_amount || 0,
-            rent_start_date: allocationUpdates.rent_start_date || new Date().toISOString().split("T")[0],
-            rent_expiry_date: expiryDate,
-            payment_status: allocationUpdates.payment_status || "pending",
-            updated_at: new Date(),
-          };
-
-          // Only set ID for new allocations
-          if (!existingAllocation) {
-            allocationData.id = `alloc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-          }
-
-          console.log("Creating/updating allocation:", allocationData);
-
-          // Upsert allocation
-          await Allocation.findOneAndUpdate({ user_id: tenantId }, allocationData, {
-            upsert: true,
-            new: true,
-            setDefaultsOnInsert: true
-          });
-        } catch (roomError) {
-          console.error("Error updating room allocation:", roomError);
-          throw new Error(`Failed to update room allocation: ${roomError.message}`);
-        }
+    /**
+     * ----------------------------
+     * CASE 1: PAYMENT STATUS ONLY
+     * ----------------------------
+     */
+    if (
+      allocationUpdates.payment_status &&
+      allocationUpdates.room_id === undefined
+    ) {
+      if (!existingAllocation) {
+        return res.status(400).json({ message: "No allocation exists" });
       }
 
-      // If room is set to null (remove allocation)
-      if (allocationUpdates.room_id === null && existingAllocation) {
-        try {
-          const roomToFree = await Room.findById(existingAllocation.room_id);
-          if (roomToFree) {
-            await Room.findByIdAndUpdate(existingAllocation.room_id, { is_available: true });
-          }
-          await Allocation.deleteOne({ user_id: tenantId });
-        } catch (deleteError) {
-          console.error("Error removing allocation:", deleteError);
-          throw new Error(`Failed to remove allocation: ${deleteError.message}`);
-        }
+      await Allocation.findByIdAndUpdate(existingAllocation._id, {
+        payment_status: allocationUpdates.payment_status,
+      });
+
+      return res.json({ success: true });
+    }
+
+    /**
+     * ----------------------------
+     * CASE 2: ROOM ASSIGN / CHANGE
+     * ----------------------------
+     */
+    if (allocationUpdates.room_id) {
+      const room = await Room.findById(allocationUpdates.room_id);
+      if (!room) {
+        return res.status(404).json({ message: "Room not found" });
       }
+
+      // Note: Room availability is calculated based on capacity and current allocations
+      // No need to update is_available here
+
+      const startDate =
+        allocationUpdates.rent_start_date ||
+        existingAllocation?.rent_start_date ||
+        new Date().toISOString().split("T")[0];
+
+      const expiryDate =
+        allocationUpdates.rent_expiry_date ||
+        existingAllocation?.rent_expiry_date ||
+        new Date(new Date().setMonth(new Date().getMonth() + 1))
+          .toISOString()
+          .split("T")[0];
+
+      if (existingAllocation) {
+        existingAllocation.room_id = room._id;
+        existingAllocation.rent_amount = allocationUpdates.rent_amount || room.monthly_rent;
+        existingAllocation.rent_start_date = startDate;
+        existingAllocation.rent_expiry_date = expiryDate;
+        existingAllocation.payment_status =
+          allocationUpdates.payment_status ||
+          existingAllocation.payment_status ||
+          "pending";
+        await existingAllocation.save();
+      } else {
+        const newAllocation = new Allocation({
+          user_id: tenantId,
+          room_id: room._id,
+          rent_amount: allocationUpdates.rent_amount || room.monthly_rent,
+          rent_start_date: startDate,
+          rent_expiry_date: expiryDate,
+          payment_status:
+            allocationUpdates.payment_status || "pending",
+        });
+        await newAllocation.save();
+      }
+    }
+
+    /**
+     * ----------------------------
+     * CASE 3: REMOVE ALLOCATION
+     * ----------------------------
+     */
+    if (allocationUpdates.room_id === null) {
+      if (existingAllocation) {
+        // Delete the allocation
+        await Allocation.findByIdAndDelete(existingAllocation._id);
+      }
+
+      return res.json({ success: true });
     }
 
     res.json({ success: true });
   } catch (err) {
-    console.error("Error updating tenant:", err);
+    console.error("UPDATE TENANT ERROR:", err);
     res.status(500).json({ message: err.message });
   }
 });
 
 /**
- * GET allocation for a specific user (for user dashboard)
+ * =====================================
+ * GET allocation for user dashboard
+ * =====================================
  */
 router.get("/allocation/:userId", async (req, res) => {
   try {
-    const userId = req.params.userId;
+    const { userId } = req.params;
 
     if (!userId || userId.length !== 24) {
       return res.status(400).json({ message: "Invalid user ID" });
     }
 
-    const allocation = await Allocation.findOne({ user_id: userId });
+    const allocation = await Allocation.findOne({ user_id: userId })
+      .populate("room_id");
 
     if (!allocation) {
       return res.json({ allocation: null });
     }
 
-    const room = await Room.findById(allocation.room_id);
-
     res.json({
       allocation: {
-        id: allocation._id,
         rent_amount: allocation.rent_amount,
         rent_start_date: allocation.rent_start_date,
         rent_expiry_date: allocation.rent_expiry_date,
         payment_status: allocation.payment_status,
-        room: room
+        room: allocation.room_id
           ? {
-              room_number: room.room_number,
-              room_type: room.room_type,
-              amenities: room.amenities || [],
+              room_number: allocation.room_id.room_number,
+              room_type: allocation.room_id.room_type,
+              amenities: allocation.room_id.amenities || [],
             }
           : null,
       },
     });
   } catch (err) {
-    console.error("Error fetching allocation:", err);
+    console.error("FETCH DASHBOARD ALLOCATION ERROR:", err);
     res.status(500).json({ message: err.message });
   }
 });

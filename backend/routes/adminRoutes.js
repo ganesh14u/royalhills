@@ -8,28 +8,35 @@ const router = express.Router();
 // GET user allocation
 router.get("/tenants/allocation/:userId", async (req, res) => {
   try {
-    const userId = req.params.userId;
-    const allocation = await Allocation.findOne({ user_id: new mongoose.Types.ObjectId(userId) }).sort({ created_at: -1 });
+    const allocation = await Allocation.findOne({
+      user_id: req.params.userId
+    })
+      .populate("room_id")
+      .sort({ createdAt: -1 });
+
     if (!allocation) {
-      return res.json(null);
+      return res.json({ allocation: null });
     }
-    const room = await Room.findById(allocation.room_id);
+
     res.json({
-      id: allocation._id,
-      rent_amount: allocation.rent_amount,
-      rent_start_date: allocation.rent_start_date,
-      rent_expiry_date: allocation.rent_expiry_date,
-      payment_status: allocation.payment_status,
-      room: room ? {
-        room_number: room.room_number,
-        room_type: room.room_type,
-        amenities: room.amenities,
-      } : null,
+      allocation: {
+        rent_amount: allocation.rent_amount,
+        rent_start_date: allocation.rent_start_date,
+        rent_expiry_date: allocation.rent_expiry_date,
+        payment_status: allocation.payment_status,
+        room: {
+          room_number: allocation.room_id.room_number,
+          room_type: allocation.room_id.room_type,
+          amenities: allocation.room_id.amenities || []
+        }
+      }
     });
   } catch (err) {
+    console.error(err);
     res.status(500).json({ message: err.message });
   }
 });
+
 
 // GET user payments
 router.get("/payments/:userId", async (req, res) => {

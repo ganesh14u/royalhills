@@ -2,19 +2,16 @@ import mongoose from "mongoose";
 
 const allocationSchema = new mongoose.Schema(
   {
-    id: {
-      type: String,
+    user_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
       required: true,
       unique: true
     },
-    user_id: {
-      type: String,
-      required: true,
-      ref: "User"
-    },
     room_id: {
-      type: String,
-      ref: "Room"
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Room",
+      required: true
     },
     rent_amount: {
       type: Number,
@@ -30,6 +27,7 @@ const allocationSchema = new mongoose.Schema(
     },
     payment_status: {
       type: String,
+      enum: ["paid", "pending", "overdue"],
       default: "pending"
     }
   },
