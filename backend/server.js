@@ -18,7 +18,8 @@ const app = express();
 // =========================
 const allowedOrigins = [
   "http://localhost:5137",
-  "https://royalhills.netlify.app"
+  "https://royalhills.netlify.app",
+  "https://royalhills-3q0i.onrender.com"
 ];
 
 app.use(cors({
