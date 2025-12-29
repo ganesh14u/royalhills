@@ -44,7 +44,7 @@ export const useRentData = () => {
   const fetchRentData = useCallback(async () => {
     if (!user) return;
     try {
-      const res = await fetch(`http://localhost:4000/api/rent/allocation/${user.id}`);
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/tenants/allocation/${user.id}`);
       const data = await res.json();
       if (!data?.allocation) {
         setAllocation(null);
@@ -78,7 +78,7 @@ export const useRentData = () => {
   const fetchPayments = useCallback(async () => {
     if (!user) return;
     try {
-      const res = await fetch(`http://localhost:4000/api/rent/payments/${user.id}`);
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/payments/${user.id}`);
       const data = await res.json();
       setPayments(data ?? []);
     } catch (err) {
